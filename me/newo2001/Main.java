@@ -5,17 +5,19 @@ import java.util.ArrayList;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.Version;
+import org.lwjgl.glfw.GLFWCursorPosCallback;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWKeyCallback;
+import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.glfw.GLFWWindowSizeCallback;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.system.MemoryStack;
 
 import me.newo2001.entity.Player;
-import me.newo2001.renderer.WorldRenderer;
+import me.newo2001.item.ItemStack;
+import me.newo2001.renderer.Renderer;
 import me.newo2001.world.World;
-
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
@@ -25,16 +27,20 @@ public class Main {
 	
 	private GLFWKeyCallback keyCallback;
 	private GLFWWindowSizeCallback windowSizeCallback;
+	private GLFWCursorPosCallback cursorPosCallback;
+	private GLFWMouseButtonCallback mouseButtonCallback;
 	private long window;
-	private World world;
-	private Player player;
-	private WorldRenderer worldRenderer;
-	private TickHandler tickHandler;
+	private static World world;
+	private static Player player;
+	private Renderer renderer;
 	private ArrayList<Integer> viewport = new ArrayList<Integer>();
 	
-	private final int virtual_width = 1280;
-	private final int virtual_height = 720;
-
+	public static final int virtual_width = 1280;
+	public static final int virtual_height = 720;
+	private long lastFrame;
+	private long lastFPS;
+	private int fps;
+	
 	public static void main(String[] args) {
 		new Main().run();
 	}
@@ -44,9 +50,9 @@ public class Main {
 		
 		init();
 		
-		while (!glfwWindowShouldClose(window))
+		while (!glfwWindowShouldClose(window)) {
 			loop();
-		
+		}
 		
 		glfwFreeCallbacks(window);
 		glfwDestroyWindow(window);
@@ -54,7 +60,6 @@ public class Main {
 	
 	private void initOpenGL() {
 		GLFWErrorCallback.createPrint(System.err).set();
-		
 		if (!glfwInit())
 			throw new IllegalStateException("Unable to initialize GLFW");
 		
@@ -62,8 +67,11 @@ public class Main {
 		glfwDefaultWindowHints(); // optional, the current window hints are already the default
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // the window will stay hidden after creation
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
-
+		
+		System.setProperty("java.awt.headless", "true");
+		
 		// Create the window
+		
 		window = glfwCreateWindow(virtual_width, virtual_height, "Hello World!", 0, 0);
 		viewport.add(virtual_width);
 		viewport.add(virtual_height);
@@ -89,7 +97,7 @@ public class Main {
 
 		// Make the OpenGL context current
 		glfwMakeContextCurrent(window);
-		// Enable v-sync
+		
 		glfwSwapInterval(1);
 
 		// Make the window visible
@@ -108,6 +116,14 @@ public class Main {
 		//Keyboard input callback
 		keyCallback = new KeyboardHandler();
 		glfwSetKeyCallback(window, keyCallback);
+		cursorPosCallback = new MouseHandler();
+		glfwSetCursorPosCallback(window, cursorPosCallback);
+		mouseButtonCallback = new MouseClickHandler();
+		glfwSetMouseButtonCallback(window, mouseButtonCallback);
+		
+		GL.createCapabilities();
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 	
 	private void scaleWindow() {
@@ -155,10 +171,12 @@ public class Main {
 	
 	private void init() {
 		initOpenGL();
+		lastFPS = getTime();
+		getDelta();
+		
 		
 		world = new World();
-		worldRenderer = new WorldRenderer(this);
-		tickHandler = new TickHandler(this);
+		renderer = new Renderer(this);
 		
 		for (int x = -4; x < 4; x++) {
 			for (int y = -4; y < 4; y++) {
@@ -167,18 +185,47 @@ public class Main {
 		}
 		
 		player = (Player) world.spawnEntity(new Player(new Location(world, 0, 0)));
+		
+		player.getInventory().setSlotContents(0, new ItemStack(Material.IRON_ORE));
+	}
+	
+	public int getDelta() {
+		long time = getTime();
+		int delta = (int) (time - lastFrame);
+		lastFrame = time;
+		return delta;
+	}
+	
+	public long getTime() {
+		return System.nanoTime() / 1000000;
+	}
+	
+	public void updateFPS() {
+		if (getTime() - lastFPS > 1000) {
+			glfwSetWindowTitle(window, "FPS: " + fps);
+			fps = 0;
+			lastFPS += 1000;
+		}
+		fps++;
 	}
 	
 	private void loop() {
+		//int delta = getDelta();
+		
 		GL.createCapabilities();
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glfwPollEvents();
-		tickHandler.tick();
-		worldRenderer.render();
 		
+		renderer.render();
+		
+		TickHandler.tick();
+		KeyboardHandler.update();
+		MouseClickHandler.update();
+		glfwPollEvents();
 		glfwSwapBuffers(window);
 		scaleWindow();
+		updateFPS();
+		
 	}
 	
 	/**
@@ -201,7 +248,7 @@ public class Main {
 	/**
 	 * @see getRawWindowSize
 	 * @see getRawWindowHeight
-	 * @Warning Don't use these coordninates in drawing anything to the screen, they are just for getting the dimensions of the window
+	 * @Warning Don't use these coordinates in drawing anything to the screen, they are just for getting the dimensions of the window
 	 * @return The height of the window in pixels
 	 */
 	public int getRawWindowWidth() {
@@ -290,14 +337,14 @@ public class Main {
 	/**
 	 * @return The world instance
 	 */
-	public World getWorld() {
+	public static World getWorld() {
 		return world;
 	}
 	
 	/**
 	 * @return The player instance
 	 */
-	public Player getPlayer() {
+	public static Player getPlayer() {
 		return player;
 	}
 }

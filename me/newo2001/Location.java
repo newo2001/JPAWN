@@ -24,19 +24,23 @@ public class Location {
 	}
 	
 	public int getBlockX() {
-		return (int) Math.floor(x);
+		if (x > 0)
+			return (int) Math.floor(x);
+		return (int) Math.ceil(x);
 	}
 	
 	public int getBlockY() {
-		return (int) Math.floor(y);
+		if (y > 0)
+			return (int) Math.floor(y);
+		return (int) Math.ceil(y);
 	}
 	
 	public int getChunkX() {
-		return ((int) Math.floor(x)) % 16;
+		return (int) Math.floor(getBlockX() / 16);
 	}
 	
 	public int getChunkY() {
-		return ((int) Math.floor(y)) % 16;
+		return (int) Math.floor(getBlockY() / 16);
 	}
 	
 	public void setX(float x) {

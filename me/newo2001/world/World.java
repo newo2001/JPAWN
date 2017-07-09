@@ -1,5 +1,6 @@
 package me.newo2001.world;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Random;
@@ -9,19 +10,20 @@ import me.newo2001.Location;
 import me.newo2001.Material;
 import me.newo2001.blocks.Block;
 import me.newo2001.entity.Entity;
+import me.newo2001.tileentity.TileEntity;
 
 public class World {
 	
 	private HashMap<Integer, HashMap<Integer, Chunk>> chunks;
 	private HashMap<UUID, Entity> entities;
+	private ArrayList<TileEntity> tileEntities;
 	
+	/**
+	 * Create a new world
+	 */
 	public World() {
 		entities = new HashMap<UUID, Entity>();
 		chunks = new HashMap<Integer, HashMap<Integer, Chunk>>();
-		HashMap<Integer, Chunk> row = new HashMap<Integer, Chunk>();
-		row.put(0, new Chunk(0, 0));
-		chunks.put(0, row);
-		populateChunk(0, 0);
 	}
 	
 	/**
@@ -41,13 +43,31 @@ public class World {
 	}
 	
 	/**
-	 * @return A Hashmap-matrix of all the currently generated chunks
+	 * Create a new chunk
+	 * @param x The chunk's x-coordinate on chunk scale
+	 * @param y The chunk's y-coordinate on chunk scale
+	 * @param blocks A pre-generated ArrayList-matrix of blocks in the chunk
+	 * @return The instance of the new chunk for chaining
+	 */
+	public Chunk createChunk(int x, int y, ArrayList<ArrayList<Block>> blocks) {
+		Chunk chunk = new Chunk(x, y, blocks);
+		if (!chunks.containsKey(x))
+			chunks.put(x, new HashMap<Integer, Chunk>());
+		HashMap<Integer, Chunk> row = chunks.get(x);
+		chunks.put(x, row);
+		return chunk;
+	}
+	
+	/**
+	 * Get all the generated chunks in this world
+	 * @return A HashMap-matrix of all the currently generated chunks
 	 */
 	public HashMap<Integer, HashMap<Integer, Chunk>> getChunks() {
 		return chunks;
 	}
 	
 	/**
+	 * Get the chunk at this position
 	 * @param x The chunk's x-coordinate on chunk-scale
 	 * @param y The chunk's y-coordinate on chunk-scale
 	 * @return The instance of the requested chunk or null if it didn't exist
@@ -59,6 +79,7 @@ public class World {
 	}
 	
 	/**
+	 * Get the chunk at this location
 	 * @param location The location of the chunk in block coordinates
 	 * @return The instance of the requested chunk or null if it didn't exist
 	 */
@@ -71,6 +92,7 @@ public class World {
 	}
 	
 	/**
+	 * set a block at this location
 	 * @param The location to set the block at
 	 * @param The block instance you want the block to be
 	 */
@@ -89,6 +111,7 @@ public class World {
 	}
 	
 	/**
+	 * Set a block at this location
 	 * @param location The location to set the block at
 	 * @param material The material to set the block to
 	 */
@@ -97,6 +120,7 @@ public class World {
 	}
 	
 	/**
+	 * Get the block at this location
 	 * @param location The location of the block inside the chunk, coordinates has to be in the range 0-15
 	 * @return The requested block instance
 	 */
@@ -148,6 +172,7 @@ public class World {
 	}
 	
 	/**
+	 * Spawn an entity in this world
 	 * @Warning Don't call this method, it already gets called in the constructor of the Entity class
 	 * @param entity The entity instance that is being spawned
 	 * @return The entity instance of chaining
@@ -166,6 +191,7 @@ public class World {
 	}
 	
 	/**
+	 * Get all the entities in this world
 	 * @return A Collection of all entities in this world
 	 */
 	public Collection<Entity> getEntities() {
@@ -179,5 +205,9 @@ public class World {
 	 */
 	public Entity getEntity(UUID uuid) {
 		return entities.get(uuid);
+	}
+	
+	public ArrayList<TileEntity> getTileEntities() {
+		return tileEntities;
 	}
 }

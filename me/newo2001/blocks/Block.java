@@ -3,11 +3,14 @@ package me.newo2001.blocks;
 import java.awt.Color;
 
 import me.newo2001.Material;
+import me.newo2001.tileentity.TileEntity;
 
-public abstract class Block {
+public class Block {
 	
 	private Material type;
 	private Color color;
+	private boolean hasTileEntity;
+	private TileEntity tileEntity;
 	
 	/**
 	 * Create a new block instance
@@ -37,6 +40,26 @@ public abstract class Block {
 	 */
 	public void setColor(Color color) {
 		this.color = color;
+	}
+	
+	public boolean getHasTileEntity() {
+		return hasTileEntity;
+	}
+	
+	public void setHasTileEntity(boolean hasTileEntity) {
+		this.hasTileEntity = hasTileEntity;
+	}
+	
+	public TileEntity getTileEntity() {
+		return tileEntity;
+	}
+	
+	public void setTileEntity(TileEntity tileEntity) {
+		this.tileEntity = tileEntity;
+	}
+	
+	public void onCreate() {
+		
 	}
 	
 }
